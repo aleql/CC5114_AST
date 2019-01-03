@@ -48,33 +48,42 @@ class ASTGeneticAlgorithm:
         nodeA = individualA.chromosome
         nodeB = individualB.chromosome
 
-        #
-        # Create new tree, as the best combination of the individuals
-        # Generate all combinations between two nodes and operations
-        combinations = [self.operations, nodeA.toList(), nodeB.toList()]
-        combinations_perm = [self.operations, nodeB.toList(), nodeA.toList()]
-        combinations = itertools.product(*combinations)
-        combinations_perm = itertools.product(*combinations_perm)
+        # Case of trees of single node
+        if self.generator.height == 1:
+            best_tree = None
+            best_score = None
+            for candidate_tree in [nodeA, nodeB]:
+                candidate_score = self.fitness_calculator.calculate_fitness(candidate_tree)
+                if best_score is None or candidate_score > best_score:
+                    best_score = candidate_score
+                    best_tree = candidate_tree
+        else:
+            # Create new tree, as the best combination of the individuals
+            # Generate all combinations between two nodes and operations
+            combinations = [self.operations, nodeA.toList(), nodeB.toList()]
+            combinations_perm = [self.operations, nodeB.toList(), nodeA.toList()]
+            combinations = itertools.product(*combinations)
+            combinations_perm = itertools.product(*combinations_perm)
 
-        combinations = itertools.chain(combinations, combinations_perm)
+            combinations = itertools.chain(combinations, combinations_perm)
 
-        # Find the best combination
-        best_tree = None
-        best_score = None
-        for combination in combinations:
-            candidate_tree = OpTree(combination[0], combination[1], combination[2])
+            # Find the best combination
+            best_tree = None
+            best_score = None
+            for combination in combinations:
+                candidate_tree = OpTree(combination[0], combination[1], combination[2])
 
-            # If candidate height is higher that the allowed one, then is skipped
-            if candidate_tree.height() > self.generator.height:
-                continue
+                # If candidate height is higher that the allowed one, then is skipped
+                if candidate_tree.height() > self.generator.height:
+                    continue
 
-            # Obtain fitness
-            candidate_score = self.fitness_calculator.calculate_fitness(candidate_tree)
+                # Obtain fitness
+                candidate_score = self.fitness_calculator.calculate_fitness(candidate_tree)
 
-            # New best candidate
-            if best_score is None or candidate_score > best_score:
-                best_score = candidate_score
-                best_tree = candidate_tree
+                # New best candidate
+                if best_score is None or candidate_score > best_score:
+                    best_score = candidate_score
+                    best_tree = candidate_tree
 
         # Mutate based of mutation_rate
         best_tree = self.generator.mutate_tree(best_tree, self.mutation_rate)
@@ -152,6 +161,7 @@ class ASTGeneticAlgorithm:
         generation_default = 5
         generation_count = 5
         last_distance = None
+        convergence = None
         while not found and generation_count != 0:
 
             # Evaluate population to obtain stats
@@ -166,7 +176,7 @@ class ASTGeneticAlgorithm:
             total_stats["var"].append(np.var(generation_fitness))
             total_stats["max"].append(maximum_fitness)
 
-            print("GENERATIONS: {} || MAX: {}".format(generations, np.amax(generation_fitness)))
+            # print("GENERATIONS: {} || MAX: {}".format(generations, np.amax(generation_fitness)))
 
             if maximum_fitness == 0:
                 found = True
@@ -181,16 +191,22 @@ class ASTGeneticAlgorithm:
 
                 generations += 1
 
+                if generations == 10000:
+                    raise Exception("STOOOOOOOOOOOOP")
+
                 # New generation
                 self.new_generation()
 
         # Converge criteria
         if generation_count == 0:
-            print("Converge by last distance")
+            # print("Converge by last distance")
+            convergence = "last_distance"
         else:
-            print("Converge by found")
+            # print("Converge by found")
+            convergence = "found"
+            generations += 1
 
-        return generations, best_tree(self.population), total_stats
+        return generations, best_tree(self.population), total_stats, convergence
 
 
 

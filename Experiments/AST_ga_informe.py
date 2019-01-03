@@ -23,18 +23,34 @@ population_size = 16
 
 mutation_rate = 0.05
 
-expected_number = 240
+expected_number = 24
 
 # Calculator
 ast_calculator = AST_Calculator(expected_number, env)
 
-GA = ASTGeneticAlgorithm(tree_generator, population_size, ast_calculator, env, mutation_rate)
-GA.initialize_population()
+# Obtain estadistics from 100 iterations
+mean_generations = []
+c_last_distance = 0
+c_found = 0
+for _ in range(100):
+    GA = ASTGeneticAlgorithm(tree_generator, population_size, ast_calculator, env, mutation_rate)
+    GA.initialize_population()
 
-generations, chromosome, ga_stats = GA.genetic_algorithm()
-print("Generations: {}".format(generations))
-print("Chromosome: {}".format(chromosome))
-print("Evaluated chromosome: {}".format(chromosome.eval(env)))
+    generations, chromosome, ga_stats, convergence = GA.genetic_algorithm()
+
+    mean_generations.append(generations)
+    if convergence == "last_distance":
+        c_last_distance += 1
+    else:
+        c_found += 1
+
+
+print(mean_generations)
+print(c_last_distance)
+print(c_found)
+    # print("Generations: {}".format(generations))
+    # print("Chromosome: {}".format(chromosome))
+    # print("Evaluated chromosome: {}".format(chromosome.eval(env)))
 
 # print("Fitness: {}".format(opti_calculator.calculate_fitness(chromosome)))
 #
