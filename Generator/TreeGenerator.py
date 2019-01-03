@@ -1,9 +1,11 @@
 import random
-from operator import add, sub, mul
 
-from OpTree import OpTree
-from ValTree import ValTree
-from VarTree import VarTree
+from AST.OpTree import OpTree
+from AST.ValTree import ValTree
+from AST.VarTree import VarTree
+from Operations.Add import Add
+from Operations.Mul import Mul
+from Operations.Sub import Sub
 
 
 class TreeGenerator(object):
@@ -12,7 +14,7 @@ class TreeGenerator(object):
         self.terminals = terminals
         self.height = height
         self.rand = rand
-        self.operators = [add, sub, mul]
+        self.operations = [Add(), Sub(), Mul()]
 
     # Inicial height= altura arbol, node = raiz
     def generate_tree(self, height):
@@ -21,9 +23,8 @@ class TreeGenerator(object):
             terminal = random.choice(self.terminals)
 
             # Variable
-            if type(terminal) == str:
+            if isinstance(terminal, str):
                 return VarTree(terminal)
-
             # Value
             else:
                 return ValTree(terminal)
@@ -33,19 +34,22 @@ class TreeGenerator(object):
 
             # Operator
             if self.rand.random() > 0.5:
-                print("OP")
-                operator = random.choice(self.operators)
+                operator = random.choice(self.operations)
                 return OpTree(operator, self.generate_tree(height - 1), self.generate_tree(height - 1))
 
             # Variable of value
             terminal = random.choice(self.terminals)
 
             # Variable
-            if type(terminal) == str:
+            if isinstance(terminal, str):
                 return VarTree(terminal)
 
             # Value
             else:
                 return ValTree(terminal)
+
+    def mutate_tree(self, node, mutation_rate):
+        return node.mutate(self.operations, self.terminals, mutation_rate, self.rand)
+
 
 

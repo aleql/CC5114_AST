@@ -1,28 +1,34 @@
 import random
 
 import itertools
-from functools import reduce
 
 import numpy as np
 
+from AST.OpTree import OpTree
 from Individual.Individual import Individual
 
 
-class GeneticAlgorithm:
+class ASTGeneticAlgorithm:
 
-    def __init__(self, generator, population_size, fitness_calculator, mutation_rate=0.1,
+    def __init__(self, generator, population_size, fitness_calculator, environment, mutation_rate=0.1,
                  rand=random.Random(9001)):
+        # GA parameters
         self.population = []
         self.generator = generator
         self.fitness_calculator = fitness_calculator
         self.mutation_rate = mutation_rate
         self.population_size = population_size
         self.rand = rand
+        # AST parameters
+        self.environment = environment
+        self.operations = generator.operations
+        self.terminals = generator.terminals
+        self.height = generator.height
 
     # Initialize a new population of given size
     def initialize_population(self):
         for _ in range(self.population_size):
-            new_individual = Individual(self.generator.generate_sequence())
+            new_individual = Individual(self.generator.generate_tree(self.height))
             self.population.append(new_individual)
 
     # Select an individual from a population given a number of iterations
@@ -34,30 +40,46 @@ class GeneticAlgorithm:
                 best = individual
         return best
 
-    # For a chromosome, mutate, changes randomly one gen of the chromosome.
-    def mutate(self, chromosome):
-        mutation_index = self.rand.randint(0, len(chromosome) - 1)
-
-        # Mutate a single random chosen chromosome
-        mutated_chromosome = list(chromosome)
-        mutated_chromosome[mutation_index] = self.generator.generate_single_gen()
-        return ''.join(mutated_chromosome)
-
-
     # Produce a new individual given two parent indivuals,
     # The new inidivual is mutated given a mutation_rate
-    def reproduce(self, individual1, individual2):
+    def reproduce(self, individualA, individualB):
 
-        # Create new gen
-        mixing_point = self.rand.randint(0, len(individual1.chromosome))
-        new_chromosome = individual2.chromosome[:mixing_point] + individual1.chromosome[mixing_point:]
+        # Obtain trees
+        nodeA = individualA.chromosome
+        nodeB = individualB.chromosome
+
+        #
+        # Create new tree, as the best combination of the individuals
+        # Generate all combinations between two nodes and operations
+        combinations = [self.operations, nodeA.toList(), nodeB.toList()]
+        combinations_perm = [self.operations, nodeB.toList(), nodeA.toList()]
+        combinations = itertools.product(*combinations)
+        combinations_perm = itertools.product(*combinations_perm)
+
+        combinations = itertools.chain(combinations, combinations_perm)
+
+        # Find the best combination
+        best_tree = None
+        best_score = None
+        for combination in combinations:
+            candidate_tree = OpTree(combination[0], combination[1], combination[2])
+
+            # If candidate height is higher that the allowed one, then is skipped
+            if candidate_tree.height() > self.generator.height:
+                continue
+
+            # Obtain fitness
+            candidate_score = self.fitness_calculator.calculate_fitness(candidate_tree)
+
+            # New best candidate
+            if best_score is None or candidate_score > best_score:
+                best_score = candidate_score
+                best_tree = candidate_tree
 
         # Mutate based of mutation_rate
-        if self.mutation_rate > self.rand.random():
-            # new_gen = list(map(lambda g: self.mutate(g), new_gen))
-            new_chromosome = self.mutate(new_chromosome)
+        best_tree = self.generator.mutate_tree(best_tree, self.mutation_rate)
 
-        return Individual(new_chromosome)
+        return Individual(best_tree)
 
     # Generate a new population in a round robin permutation
     def generate_population(self, mating_pool):
@@ -96,18 +118,23 @@ class GeneticAlgorithm:
     # Solution is found when the population is the same generetaion count times
     def genetic_algorithm(self, generation_count=3):
 
-        # Check if all the individuals in the list have the same chromosome
-        def all_same(items):
-            return all( i.chromosome == items[0].chromosome for i in items)
+        # Obtain the chromosome of highest score in a population
+        def best_tree(individuals):
+            best_tree = None
+            best_score = None
+            for i in individuals:
+                # print(i.score)
+                if best_score is None or i.score > best_score:
+                    best_score = i.score
+                    best_tree = i.chromosome
+            return best_tree
+
 
         # Obtain population fitness
         def pop_fitness(population):
             fitness = list(map(lambda i: i.score, population))
             return fitness
 
-
-        # Default generation count
-        default = generation_count
 
         # List for the fitness by generation
         total_stats = {}
@@ -116,23 +143,55 @@ class GeneticAlgorithm:
         total_stats["std"] = []
         total_stats["var"] = []
         total_stats["max"] = []
-        # generation_fitness.append(pop_fitness(self.population))
-
 
         # Algorithm
         generations = 0
-        while generation_count > 0:
+        found = False
+
+        # Convergence by 5 generations with same distance
+        generation_default = 5
+        generation_count = 5
+        last_distance = None
+        while not found and generation_count != 0:
 
             # Evaluate population to obtain stats
             self.evaluate_population()
             generation_fitness = pop_fitness(self.population)
+
+            maximum_fitness = np.amax(generation_fitness)
+
             total_stats["mean"].append(np.mean(generation_fitness))
             total_stats["sum"].append(np.sum(generation_fitness))
             total_stats["std"].append(np.std(generation_fitness))
             total_stats["var"].append(np.var(generation_fitness))
-            total_stats["max"].append(np.amax(generation_fitness))
+            total_stats["max"].append(maximum_fitness)
 
-            self.new_generation()
+            print("GENERATIONS: {} || MAX: {}".format(generations, np.amax(generation_fitness)))
+
+            if maximum_fitness == 0:
+                found = True
+
+            else:
+                if maximum_fitness == last_distance:
+                    generation_count -= 1
+                else:
+                    # Reset counter
+                    last_distance = maximum_fitness
+                    generation_count = generation_default
+
+                generations += 1
+
+                # New generation
+                self.new_generation()
+
+        # Converge criteria
+        if generation_count == 0:
+            print("Converge by last distance")
+        else:
+            print("Converge by found")
+
+        return generations, best_tree(self.population), total_stats
+
 
 
             # pop = ""
@@ -140,17 +199,16 @@ class GeneticAlgorithm:
             #     pop += str(i.chromosome) + " "  + "/" + str(i.score) + " "
             # print(" Population: " + str(generations) + " / " + pop)
 
-            if all_same(self.population):
-                self.population[0].evaluate_fitness(self.fitness_calculator)
-                if self.population[0].score == len(self.population[0].chromosome):
-                    generation_count -= 1
-            else:
-                generation_count = default
-            generations += 1
+            # if maximum_fitness == 0:
+            #     found = True
+            # else:
+                # generation_count = default
+
+
             # print(generations)
 
 
-        return generations, self.population[0].chromosome, total_stats
+        # return generations, best_tree(self.population), total_stats
 
 
 
