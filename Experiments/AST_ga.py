@@ -45,58 +45,20 @@ from Generator.TreeGenerator import TreeGenerator
 
 # # Height vs Convergence:
 
-covergence_per_height = []
-heights = list(range(5, 11))
-
-iterations = 10
-for height in heights:
-    mean_convergence = []
-    print("height: {}".format(height))
-    for _ in range(iterations):
-        terminals = [19, 7, 40, 3]
-        tree_generator = TreeGenerator(terminals, height, random.Random(5))
-
-        env = {}
-
-        population_size = 128
-
-        mutation_rate = 0.05
-
-        expected_number = 147
-
-        # Calculator
-        ast_calculator = AST_Calculator(expected_number, env)
-
-        GA = ASTGeneticAlgorithm(tree_generator, population_size, ast_calculator, env, mutation_rate)
-        GA.initialize_population()
-
-        generations, chromosome, ga_stats, convergence = GA.genetic_algorithm()
-
-        mean_convergence.append(generations)
-
-    covergence_per_height.append(np.mean(mean_convergence))
-
-print(heights)
-print(covergence_per_height)
-lineChart(heights, covergence_per_height, "AST height", "Generations to converge", "AST max height vs Generations to converge")
-
-
-# Population vs Convergence:
-#
 # covergence_per_height = []
-# populations = [2**x for x in range(3, 10)]
+# heights = list(range(5, 11))
 #
 # iterations = 10
-# for population in populations:
+# for height in heights:
 #     mean_convergence = []
+#     print("height: {}".format(height))
 #     for _ in range(iterations):
-#         height = 5
 #         terminals = [19, 7, 40, 3]
 #         tree_generator = TreeGenerator(terminals, height, random.Random(5))
 #
 #         env = {}
 #
-#         population_size = population
+#         population_size = 128
 #
 #         mutation_rate = 0.05
 #
@@ -114,7 +76,45 @@ lineChart(heights, covergence_per_height, "AST height", "Generations to converge
 #
 #     covergence_per_height.append(np.mean(mean_convergence))
 #
-# print(populations)
+# print(heights)
 # print(covergence_per_height)
-# lineChart(populations, covergence_per_height, "Population sizes", "Generations to converge", "Population sizes vs Generations to converge \n for max height 5")
+# lineChart(heights, covergence_per_height, "AST height", "Generations to converge", "AST max height vs Generations to converge")
+
+
+# Population vs Convergence:
+
+covergence_per_height = []
+populations = [2**x for x in range(3, 12)]
+
+iterations = 10
+for population in populations:
+    mean_convergence = []
+    for _ in range(iterations):
+        height = 6
+        terminals = [19, 7, 40, 3]
+        tree_generator = TreeGenerator(terminals, height, random.Random(5))
+
+        env = {}
+
+        population_size = population
+
+        mutation_rate = 0.05
+
+        expected_number = 147
+
+        # Calculator
+        ast_calculator = AST_Calculator(expected_number, env)
+
+        GA = ASTGeneticAlgorithm(tree_generator, population_size, ast_calculator, env, mutation_rate)
+        GA.initialize_population()
+
+        generations, chromosome, ga_stats, convergence = GA.genetic_algorithm()
+
+        mean_convergence.append(generations)
+
+    covergence_per_height.append(np.mean(mean_convergence))
+
+print(populations)
+print(covergence_per_height)
+lineChart(populations, covergence_per_height, "Population sizes", "Generations to converge", "Population sizes vs Generations to converge \n for max height 5")
 
