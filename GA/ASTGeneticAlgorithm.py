@@ -176,7 +176,7 @@ class ASTGeneticAlgorithm:
             total_stats["var"].append(np.var(generation_fitness))
             total_stats["max"].append(maximum_fitness)
 
-            # print("GENERATIONS: {} || MAX: {}".format(generations, np.amax(generation_fitness)))
+            # print("GENERATIONS: {} || max: {}".format(generations, np.amax(generation_fitness)))
 
             if maximum_fitness == 0:
                 found = True
@@ -190,9 +190,6 @@ class ASTGeneticAlgorithm:
                     generation_count = generation_default
 
                 generations += 1
-
-                if generations == 10000:
-                    raise Exception("STOOOOOOOOOOOOP")
 
                 # New generation
                 self.new_generation()
